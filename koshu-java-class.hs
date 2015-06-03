@@ -136,7 +136,7 @@ dumpField f =
 -- --------------------------------------------  Method
 
 dumpMethod :: B.ByteString -> MethodD -> [String]
-dumpMethod clsName m = concatGap [[ab], [meth], code] where
+dumpMethod clsName m = gap $ concatGap [[ab], [meth], code] where
     ab     = about [ term "this-class"  $ pBytes clsName
                    , term "method"      $ pBytes $ J.methodName m ]
     meth   = let J.MethodSignature args ret = J.methodSignature m
@@ -160,21 +160,39 @@ dumpInst (n, i) = judge "INST" [ term "seq"  $ K.pDecFromInt n
                                , term "inst" $ pShow i ]
 
 dumpInstDetail :: (Int, J.Instruction) -> Maybe String
-dumpInstDetail (n, J.GETSTATIC i)          = dumpInvoke "INST-GETSTATIC" n i
-dumpInstDetail (n, J.PUTSTATIC i)          = dumpInvoke "INST-PUTSTATIC" n i
-dumpInstDetail (n, J.GETFIELD i)           = dumpInvoke "INST-GETFIELD" n i
-dumpInstDetail (n, J.PUTFIELD i)           = dumpInvoke "INST-PUTFIELD" n i
-dumpInstDetail (n, J.INVOKEVIRTUAL i)      = dumpInvoke "INST-INVOKE-VIRTUAL" n i
-dumpInstDetail (n, J.INVOKESPECIAL i)      = dumpInvoke "INST-INVOKE-SPECIAL" n i
-dumpInstDetail (n, J.INVOKESTATIC i)       = dumpInvoke "INST-INVOKE-STATIC"  n i
-dumpInstDetail (n, J.INVOKEINTERFACE i _)  = dumpInvoke "INST-INVOKE-INTERFACE" n i
-dumpInstDetail (n, J.NEW i)                = dumpInvoke "INST-NEW" n i
+dumpInstDetail (n, J.GETSTATIC i)          = dumpInstField  n i "getstatic"
+dumpInstDetail (n, J.PUTSTATIC i)          = dumpInstField  n i "putstatic"
+dumpInstDetail (n, J.GETFIELD i)           = dumpInstField  n i "getfield"
+dumpInstDetail (n, J.PUTFIELD i)           = dumpInstField  n i "putfield"
+
+dumpInstDetail (n, J.INVOKEVIRTUAL i)      = dumpInstMethod n i "invokevirtual"
+dumpInstDetail (n, J.INVOKESPECIAL i)      = dumpInstMethod n i "invokespecial"
+dumpInstDetail (n, J.INVOKESTATIC i)       = dumpInstMethod n i "invokestatic"
+dumpInstDetail (n, J.INVOKEINTERFACE i _)  = dumpInstMethod n i "invokeinterface"
+
+dumpInstDetail (n, J.NEW i)                = dumpInstMethod n i "new"
+dumpInstDetail (n, J.ANEWARRAY i)          = dumpInstClass  n i "anewarray"
+dumpInstDetail (n, J.CHECKCAST i)          = dumpInstClass  n i "checkcast"
+dumpInstDetail (n, J.INSTANCEOF i)         = dumpInstClass  n i "instanceof"
 dumpInstDetail _ = Nothing
 
-dumpInvoke :: String -> Int -> W.Word16 -> Maybe String
-dumpInvoke pat n i = Just $ jud where
-    jud   = judge pat [ term "seq"   $ K.pDecFromInt n
-                      , term "index" $ pWord16 i ]
+dumpInstClass :: Int -> W.Word16 -> String -> Maybe String
+dumpInstClass n i op = Just $ judge "INST-CLASS" xs where
+    xs = [ term "seq"   $ K.pDecFromInt n
+         , term "op"    $ K.pText op
+         , term "index" $ pWord16 i ]
+
+dumpInstField :: Int -> W.Word16 -> String -> Maybe String
+dumpInstField n i op = Just $ judge "INST-FIELD" xs where
+    xs = [ term "seq"   $ K.pDecFromInt n
+         , term "op"    $ K.pText op
+         , term "index" $ pWord16 i ]
+
+dumpInstMethod :: Int -> W.Word16 -> String -> Maybe String
+dumpInstMethod n i op = Just $ judge "INST-METHOD" xs where
+    xs = [ term "seq"   $ K.pDecFromInt n
+         , term "op"    $ K.pText op
+         , term "index" $ pWord16 i ]
 
 
 -- --------------------------------------------  Putter
