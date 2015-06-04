@@ -46,7 +46,7 @@ dumpClassDirect c = K.putLines texts where
                           , o "**  Method", methods
                           , o "**  End"]
     o text    = [text]
-    ab        = about [ term "this-class" $ pBytes $ J.thisClass c ]
+    ab        = about [ term "this-class" $ pClass $ J.thisClass c ]
     pools     = dumpPool  `map`       (Map.assocs $ J.constsPool c)
     fields    = dumpField `map`       J.classFields c
     methods   = dumpMeth  `concatMap` J.classMethods c
@@ -137,7 +137,7 @@ dumpField f =
 
 dumpMethod :: B.ByteString -> MethodD -> [String]
 dumpMethod clsName m = gap $ concatGap [[ab], [meth], code] where
-    ab     = about [ term "this-class"  $ pBytes clsName
+    ab     = about [ term "this-class"  $ pClass clsName
                    , term "method"      $ pBytes $ J.methodName m ]
     meth   = let J.MethodSignature args ret = J.methodSignature m
              in judge "METHOD"
