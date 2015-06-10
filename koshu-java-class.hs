@@ -42,13 +42,15 @@ dumpClassDirect :: ClassD -> IO ()
 dumpClassDirect c = K.putLines texts where
     texts     = concatGap [ dumpComment, o ab, o $ dumpClass c
                           , o "**  Constant pool", pools
+                          , o "**  Interface", ifs
                           , o "**  Field", fields
                           , o "**  Method", methods
                           , o "**  End"]
     o text    = [text]
     ab        = about [ term "this-class" $ pClass $ J.thisClass c ]
-    pools     = dumpPool  `map`       (Map.assocs $ J.constsPool c)
-    fields    = dumpField `map`       J.classFields c
+    pools     = dumpPool      `map`   (Map.assocs $ J.constsPool c)
+    ifs       = dumpInterface `map`   J.interfaces c
+    fields    = dumpField     `map`   J.classFields c
     methods   = dumpMeth  `concatMap` J.classMethods c
     dumpMeth  = dumpMethod $ J.thisClass c
 
@@ -71,6 +73,9 @@ dumpClass c =
                   , term "method-count" $ pWord16  $ J.classMethodsCount c
                   , term "attr-count"   $ pWord16  $ J.classAttributesCount c
                   , term "attr"         $ pAttrSet $ J.classAttributes c ]
+
+dumpInterface :: B.ByteString -> String
+dumpInterface i = judge "INTERFACE" [ term "interface" $ pClass i ]
 
 
 -- --------------------------------------------  Constant pool
@@ -148,9 +153,18 @@ dumpMethod clsName m = gap $ concatGap [[ab], [meth], code] where
                     , term "attr"       $ pAttrSet $ J.methodAttributes m ]
     code   = case J.attrByName m "Code" of
                Nothing -> ["** no code"]
-               Just bytecode ->
-                   let inst = zip [1..] $ J.codeInstructions $ J.decodeMethod bytecode
-                   in concatGap [map dumpInst inst, K.mapMaybe dumpInstDetail inst]
+               Just bytecode -> dumpCode $ J.decodeMethod bytecode
+
+dumpCode :: J.Code -> [String]
+dumpCode c = concatGap [[code], insts, details] where
+      code     = judge "CODE" [ term "stack-size"      $ pWord16 $ J.codeStackSize c
+                              , term "max-locals"      $ pWord16 $ J.codeMaxLocals c
+                              , term "length"          $ pWord32 $ J.codeLength c
+                              , term "exception-count" $ pWord16 $ J.codeExceptionsN c
+                              , term "attr-count"      $ pWord16 $ J.codeAttrsN c ]
+      inst     = zip [1..] $ J.codeInstructions c
+      insts    = map dumpInst inst
+      details  = K.mapMaybe dumpInstDetail inst
 
 
 -- --------------------------------------------  Instruction
