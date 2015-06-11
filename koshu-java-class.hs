@@ -158,15 +158,24 @@ dumpMethod clsName m = gap $ concatGap [[ab], [meth], code] where
                Just bytecode -> dumpCode $ J.decodeMethod bytecode
 
 dumpCode :: J.Code -> [String]
-dumpCode c = concatGap [[code], insts, details] where
+dumpCode c = concatGap [[code], insts, details, excs] where
       code     = judge "CODE" [ term "stack-size"      $ pWord16 $ J.codeStackSize c
                               , term "max-locals"      $ pWord16 $ J.codeMaxLocals c
                               , term "length"          $ pWord32 $ J.codeLength c
                               , term "exception-count" $ pWord16 $ J.codeExceptionsN c
-                              , term "attr-count"      $ pWord16 $ J.codeAttrsN c ]
-      inst     = zip [1..] $ J.codeInstructions c
+                              , term "attr-count"      $ pWord16 $ J.codeAttrsN c
+                              , term "attr"            $ pAttrList $ J.codeAttributes c ]
+      inst     = zip [0..] $ J.codeInstructions c
       insts    = map dumpInst inst
       details  = K.mapMaybe dumpInstDetail inst
+      excs     = map dumpException $ J.codeExceptions c
+
+dumpException :: J.CodeException -> String
+dumpException (J.CodeException start end handler catch) = judge "EXCEPTION" xs where
+    xs = [ term "start"      $ pWord16 start
+         , term "end"        $ pWord16 end
+         , term "handler"    $ pWord16 handler
+         , term "catch-type" $ pWord16 catch ]
 
 
 -- --------------------------------------------  Instruction
@@ -215,6 +224,9 @@ dumpInstMethod n i op = Just $ judge "INST-METHOD" xs where
 
 pAccSet :: AccessFlagsD -> K.VContent
 pAccSet a = K.pSet $ K.pText `map` accessFlagsText a
+
+pAttrList :: J.Attributes J.File -> K.VContent
+pAttrList a = K.pSet $ (pWord16 . J.attributeName) `map` J.attributesList a
 
 pAttrSet :: AttributesD -> K.VContent
 pAttrSet a = K.pSet $ (pBytes . fst) `map` J.arlist a
