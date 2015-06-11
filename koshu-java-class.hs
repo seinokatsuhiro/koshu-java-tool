@@ -82,48 +82,50 @@ dumpInterface i = judge "INTERFACE" [ term "interface" $ pClass i ]
 
 dumpPool :: (W.Word16, ConstantD) -> String
 dumpPool (i, J.CClass c) = judge "POOL-CLASS" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "class"  $ pClass c ]
+    xs = [ term "index"     $ pWord16 i
+         , term "class"     $ pClass c ]
 dumpPool (i, J.CField c (J.NameType n t)) = judge "POOL-FIELD" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "class"  $ pClass c
-         , term "field"  $ pBytes n
-         , term "type"   $ pShow t ]
-dumpPool (i, J.CMethod c (J.NameType n t)) = judge "POOL-METHOD" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "class"  $ pClass c
-         , term "method" $ pBytes n
-         , term "type"   $ pShow t ]
+    xs = [ term "index"     $ pWord16 i
+         , term "class"     $ pClass c
+         , term "field"     $ pBytes n
+         , term "type"      $ pShow t ]
+dumpPool (i, J.CMethod c (J.NameType n m)) = judge "POOL-METHOD" xs where
+    J.MethodSignature args ret = m
+    xs = [ term "index"     $ pWord16 i
+         , term "class"     $ pClass c
+         , term "method"    $ pBytes n
+         , term "args-type" $ pArgsType args
+         , term "ret-type"  $ pRet ret ]
 dumpPool (i, J.CIfaceMethod c (J.NameType n t)) = judge "POOL-IF-METHOD" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "class"  $ pClass c
-         , term "method" $ pBytes n
-         , term "type"   $ K.pText (show t) ]
+    xs = [ term "index"     $ pWord16 i
+         , term "class"     $ pClass c
+         , term "method"    $ pBytes n
+         , term "type"      $ K.pText (show t) ]
 dumpPool (i, J.CString s) = judge "POOL-STRING" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "value"  $ pBytes s ]
+    xs = [ term "index"     $ pWord16 i
+         , term "value"     $ pBytes s ]
 dumpPool (i, J.CInteger n) = judge "POOL-INTEGER" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "value"  $ pWord32 n ]
+    xs = [ term "index"     $ pWord16 i
+         , term "value"     $ pWord32 n ]
 dumpPool (i, J.CFloat _) = judge "POOL-FLOAT" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "value"  $ K.pText "unimplemented" ]
+    xs = [ term "index"     $ pWord16 i
+         , term "value"     $ K.pText "unimplemented" ]
 dumpPool (i, J.CLong _) = judge "POOL-LONG" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "value"  $ K.pText "unimplemented" ]
+    xs = [ term "index"     $ pWord16 i
+         , term "value"     $ K.pText "unimplemented" ]
 dumpPool (i, J.CDouble _) = judge "POOL-DOUBLE" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "value"  $ K.pText "unimplemented" ]
+    xs = [ term "index"     $ pWord16 i
+         , term "value"     $ K.pText "unimplemented" ]
 dumpPool (i, J.CNameType n t) = judge "POOL-NAME-TYPE" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "name"   $ pBytes n
-         , term "type"   $ pBytes t]
+    xs = [ term "index"     $ pWord16 i
+         , term "name"      $ pBytes n
+         , term "type"      $ pBytes t]
 dumpPool (i, J.CUTF8 s) = judge "POOL-UTF8" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "value"  $ pBytes s ]
+    xs = [ term "index"     $ pWord16 i
+         , term "value"     $ pBytes s ]
 dumpPool (i, J.CUnicode s) = judge "POOL-UNICODE" xs where
-    xs = [ term "index"  $ pWord16 i
-         , term "value"  $ pBytes s]
+    xs = [ term "index"     $ pWord16 i
+         , term "value"     $ pBytes s]
 
 
 -- --------------------------------------------  Field
@@ -147,8 +149,8 @@ dumpMethod clsName m = gap $ concatGap [[ab], [meth], code] where
     meth   = let J.MethodSignature args ret = J.methodSignature m
              in judge "METHOD"
                     [ term "accessor"   $ pAccSet  $ J.methodAccessFlags m
-                    , term "args-type"  $ K.pList  $ pShow `map` args
-                    , term "ret-type"   $ pShow    ret
+                    , term "args-type"  $ pArgsType args
+                    , term "ret-type"   $ pRet ret
                     , term "attr-count" $ pWord16  $ J.methodAttributesCount m
                     , term "attr"       $ pAttrSet $ J.methodAttributes m ]
     code   = case J.attrByName m "Code" of
@@ -222,6 +224,11 @@ pClass c = K.pText $ map dot $ J.toString c where
     dot '/' = '.'
     dot x   = x
 
+pClassText :: String -> K.VContent
+pClassText s = K.pText $ map dot s where
+    dot '/' = '.'
+    dot x   = x
+
 pWord16 :: W.Word16 -> K.VContent
 pWord16 i = K.pDecFromInt i' where
     i' = fromIntegral i :: Int
@@ -235,6 +242,9 @@ pBytes = K.pText . J.toString
 
 pShow :: (Show a) => a -> K.VContent
 pShow = K.pText . show
+
+pArgsType :: [J.FieldType] -> K.VContent
+pArgsType args = K.pList $ pType `map` args
 
 
 -- --------------------------------------------  Utility
@@ -254,6 +264,22 @@ accessFlagText J.ACC_TRANSIENT     = "transient"
 accessFlagText J.ACC_NATIVE        = "native"
 accessFlagText J.ACC_INTERFACE     = "interface"
 accessFlagText J.ACC_ABSTRACT      = "abstract"
+
+pType :: J.FieldType -> K.VContent
+pType J.SignedByte          = K.pText "byte"
+pType J.CharByte            = K.pText "char"
+pType J.DoubleType          = K.pText "double"
+pType J.FloatType           = K.pText "float"
+pType J.IntType             = K.pText "int"
+pType J.LongInt             = K.pText "long"
+pType J.ShortInt            = K.pText "short"
+pType J.BoolType            = K.pText "bool"
+pType (J.ObjectType s)      = pClassText s
+pType (J.Array _ t)         = K.pList [pType t]
+
+pRet :: J.ReturnSignature -> K.VContent
+pRet (J.Returns t)  = pType t
+pRet J.ReturnsVoid  = K.pText "void"
 
 gap :: K.Map [String]
 gap xs@("" : _) = xs
