@@ -12,11 +12,11 @@ import qualified System.Environment            as E
 import qualified JVM.Assembler                 as J
 import qualified JVM.ClassFile                 as J
 import qualified JVM.Converter                 as J
+import qualified InstSize                      as J
 
 import qualified Koshucode.Baala.Base          as K
 import qualified Koshucode.Baala.Core          as K
 import qualified Koshucode.Baala.Type.Vanilla  as K
-
 
 main :: IO ()
 main = do
@@ -165,24 +165,30 @@ dumpCode c = concatGap [[code], insts, details, excs] where
                               , term "exception-count" $ pWord16 $ J.codeExceptionsN c
                               , term "attr-count"      $ pWord16 $ J.codeAttrsN c
                               , term "attr"            $ pAttrList $ J.codeAttributes c ]
-      inst     = zip [0..] $ J.codeInstructions c
+      inst     = countPC $ J.codeInstructions c
       insts    = map dumpInst inst
       details  = K.mapMaybe dumpInstDetail inst
       excs     = map dumpException $ J.codeExceptions c
 
 dumpException :: J.CodeException -> String
 dumpException (J.CodeException start end handler catch) = judge "EXCEPTION" xs where
-    xs = [ term "start"      $ pWord16 start
-         , term "end"        $ pWord16 end
-         , term "handler"    $ pWord16 handler
-         , term "catch-type" $ pWord16 catch ]
+    xs = [ term "start"            $ pWord16 start
+         , term "end"              $ pWord16 end
+         , term "handler"          $ pWord16 handler
+         , term "catch-type-index" $ pWord16 catch ]
+
+
+countPC :: [J.Instruction] -> [(Int, J.Instruction)]
+countPC = loop 0 where
+    loop _ [] = []
+    loop p (i:is) = (p, i) : loop (p + J.instSize i) is
 
 
 -- --------------------------------------------  Instruction
 
 dumpInst :: (Int, J.Instruction) -> String
-dumpInst (n, i) = judge "INST" [ term "seq"  $ K.pDecFromInt n
-                               , term "inst" $ pShow i ]
+dumpInst (n, i) = judge "INST" [ term "pc"  $ K.pDecFromInt n
+                            , term "inst" $ pShow i ]
 
 dumpInstDetail :: (Int, J.Instruction) -> Maybe String
 dumpInstDetail (n, J.GETSTATIC i)          = dumpInstField  n i "getstatic"
@@ -203,19 +209,19 @@ dumpInstDetail _ = Nothing
 
 dumpInstClass :: Int -> W.Word16 -> String -> Maybe String
 dumpInstClass n i op = Just $ judge "INST-CLASS" xs where
-    xs = [ term "seq"   $ K.pDecFromInt n
+    xs = [ term "pc"    $ K.pDecFromInt n
          , term "op"    $ K.pText op
          , term "index" $ pWord16 i ]
 
 dumpInstField :: Int -> W.Word16 -> String -> Maybe String
 dumpInstField n i op = Just $ judge "INST-FIELD" xs where
-    xs = [ term "seq"   $ K.pDecFromInt n
+    xs = [ term "pc"    $ K.pDecFromInt n
          , term "op"    $ K.pText op
          , term "index" $ pWord16 i ]
 
 dumpInstMethod :: Int -> W.Word16 -> String -> Maybe String
 dumpInstMethod n i op = Just $ judge "INST-METHOD" xs where
-    xs = [ term "seq"   $ K.pDecFromInt n
+    xs = [ term "pc"    $ K.pDecFromInt n
          , term "op"    $ K.pText op
          , term "index" $ pWord16 i ]
 
