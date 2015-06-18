@@ -40,7 +40,8 @@ type AccessFlagsD  = J.AccessFlags J.Direct
 
 dumpClassDirect :: ClassD -> IO ()
 dumpClassDirect c = K.putLines texts where
-    texts     = concatGap [ dumpComment, o ab, o $ dumpClass c
+    texts     = concatGap [ dumpComment
+                          , [ab, dumpClass c]
                           , o "**  Constant pool", pools
                           , o "**  Interface", ifs
                           , o "**  Field", fields
@@ -51,7 +52,7 @@ dumpClassDirect c = K.putLines texts where
     pools     = dumpPool      `map`   (Map.assocs $ J.constsPool c)
     ifs       = dumpInterface `map`   J.interfaces c
     fields    = dumpField     `map`   J.classFields c
-    methods   = dumpMeth  `concatMap` J.classMethods c
+    methods   = dumpMeth  `concatMap` zip [1..] (J.classMethods c)
     dumpMeth  = dumpMethod $ J.thisClass c
 
 dumpComment :: [String]
@@ -88,7 +89,7 @@ dumpPool (i, J.CField c (J.NameType n t)) = judge "POOL-FIELD" xs where
     xs = [ term "index"     $ pWord16 i
          , term "class"     $ pClass c
          , term "field"     $ pBytes n
-         , term "type"      $ pShow t ]
+         , term "type"      $ pType t ]
 dumpPool (i, J.CMethod c (J.NameType n m)) = judge "POOL-METHOD" xs where
     J.MethodSignature args ret = m
     xs = [ term "index"     $ pWord16 i
@@ -96,11 +97,12 @@ dumpPool (i, J.CMethod c (J.NameType n m)) = judge "POOL-METHOD" xs where
          , term "method"    $ pBytes n
          , term "args-type" $ pArgsType args
          , term "ret-type"  $ pRet ret ]
-dumpPool (i, J.CIfaceMethod c (J.NameType n t)) = judge "POOL-IF-METHOD" xs where
+dumpPool (i, J.CIfaceMethod c (J.NameType n (J.MethodSignature args ret))) = judge "POOL-IF-METHOD" xs where
     xs = [ term "index"     $ pWord16 i
          , term "class"     $ pClass c
          , term "method"    $ pBytes n
-         , term "type"      $ K.pText (show t) ]
+         , term "args-type" $ pArgsType args
+         , term "ret-type"  $ pRet ret ]
 dumpPool (i, J.CString s) = judge "POOL-STRING" xs where
     xs = [ term "index"     $ pWord16 i
          , term "value"     $ pBytes s ]
@@ -135,17 +137,19 @@ dumpField f =
     judge "FIELD"
          [ term "accessor"   $ pAccSet  $ J.fieldAccessFlags f
          , term "field"      $ pBytes   $ J.fieldName f
-         , term "type"       $ pShow    $ J.fieldSignature f
+         , term "type"       $ pType    $ J.fieldSignature f
          , term "attr-count" $ pWord16  $ J.fieldAttributesCount f
          , term "attr"       $ pAttrSet $ J.fieldAttributes f ]
 
 
 -- --------------------------------------------  Method
 
-dumpMethod :: B.ByteString -> MethodD -> [String]
-dumpMethod clsName m = gap $ concatGap [[ab], [meth], code] where
+dumpMethod :: B.ByteString -> (Int, MethodD) -> [String]
+dumpMethod clsName (n, m) = gap $ concatGap [[comm], ab : meth : code] where
+    comm   = "**  Method #" ++ show n ++ ". " ++ J.toString name
+    name   = J.methodName m
     ab     = about [ term "this-class"  $ pClass clsName
-                   , term "method"      $ pBytes $ J.methodName m ]
+                   , term "method"      $ pBytes name ]
     meth   = let J.MethodSignature args ret = J.methodSignature m
              in judge "METHOD"
                     [ term "accessor"   $ pAccSet  $ J.methodAccessFlags m
