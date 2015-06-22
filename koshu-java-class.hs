@@ -214,32 +214,38 @@ dumpInstDetail (n, J.NEW i)                = dumpInstMethod n i "new"
 dumpInstDetail (n, J.ANEWARRAY i)          = dumpInstClass  n i "anewarray"
 dumpInstDetail (n, J.CHECKCAST i)          = dumpInstClass  n i "checkcast"
 dumpInstDetail (n, J.INSTANCEOF i)         = dumpInstClass  n i "instanceof"
-dumpInstDetail _ = []
 
-dumpSwitch :: J.PC -> [(W.Word32, W.Word32)] -> [String]
-dumpSwitch n switch = map j switch where
-    j (w, g) = judge "INST-SWITCH"
-                     [ term "pc"    $ K.pDecFromInt n
-                     , term "when"  $ K.pWord32 w
-                     , term "jump"  $ K.pWord32 g ]
+dumpInstDetail (n, J.WIDE _ i)             = dumpInstWide n i
+dumpInstDetail _ = []
 
 dumpInstClass :: J.PC -> W.Word16 -> String -> [String]
 dumpInstClass n i op = [judge "INST-CLASS" xs] where
-    xs = [ term "pc"    $ K.pDecFromInt n
+    xs = [ term "pc"    $ K.pPC n
          , term "op"    $ K.pText op
          , term "index" $ K.pWord16 i ]
 
 dumpInstField :: J.PC -> W.Word16 -> String -> [String]
 dumpInstField n i op = [judge "INST-FIELD" xs] where
-    xs = [ term "pc"    $ K.pDecFromInt n
+    xs = [ term "pc"    $ K.pPC n
          , term "op"    $ K.pText op
          , term "index" $ K.pWord16 i ]
 
 dumpInstMethod :: J.PC -> W.Word16 -> String -> [String]
 dumpInstMethod n i op = [judge "INST-METHOD" xs] where
-    xs = [ term "pc"    $ K.pDecFromInt n
+    xs = [ term "pc"    $ K.pPC n
          , term "op"    $ K.pText op
          , term "index" $ K.pWord16 i ]
+
+dumpSwitch :: J.PC -> [(W.Word32, W.Word32)] -> [String]
+dumpSwitch n switch = map j switch where
+    j (w, g) = judge "INST-SWITCH"
+                     [ term "pc"    $ K.pPC n
+                     , term "when"  $ K.pWord32 w
+                     , term "jump"  $ K.pWord32 g ]
+
+dumpInstWide :: J.PC -> J.Instruction -> [String]
+dumpInstWide n i = [judge "INST-WIDE" $ pc : J.instTerms i] where
+    pc = term "pc" $ K.pPC n
 
 
 -- --------------------------------------------  Putter

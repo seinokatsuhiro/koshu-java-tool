@@ -4,6 +4,7 @@ module Content
   ( pWord8
   , pWord16
   , pWord32
+  , pPC
   ) where
 
 import qualified Data.Word              as W
@@ -21,3 +22,5 @@ pWord32 :: (K.CContent c) => W.Word32 -> c
 pWord32 i = K.pDecFromInt i' where
     i' = fromIntegral i :: Int
 
+pPC :: (K.CDec c) => Int -> c
+pPC = K.pDecFromInt

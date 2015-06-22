@@ -73,6 +73,8 @@ instTerms (J.ASTORE_ i)                = op0 ("astore_" ++ imm i)
 
 instTerms (J.IINC x1 x2)              = op2 "iinc" (K.pWord8 x1) (K.pWord8 x2)
 
+instTerms (J.FCMP c)                  = op0 ("fcmp_" ++ cmp c)
+instTerms (J.DCMP c)                  = op0 ("dcmp_" ++ cmp c)
 instTerms (J.IF c x1)                 = op1 ("if" ++ cmp c) (K.pWord16 x1)
 instTerms (J.IF_ICMP c x1)            = op1 ("if_icmp" ++ cmp c) $ K.pWord16 x1
 instTerms (J.IF_ACMP c x1)            = op1 ("if_acmp" ++ cmp c) $ K.pWord16 x1
