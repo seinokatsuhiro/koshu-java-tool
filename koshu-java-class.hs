@@ -13,10 +13,12 @@ import qualified JVM.Assembler                 as J
 import qualified JVM.ClassFile                 as J
 import qualified JVM.Converter                 as J
 import qualified InstSize                      as J
+import qualified InstTerms                     as J
 
 import qualified Koshucode.Baala.Base          as K
 import qualified Koshucode.Baala.Core          as K
 import qualified Koshucode.Baala.Type.Vanilla  as K
+import qualified Content                       as K
 
 main :: IO ()
 main = do
@@ -64,15 +66,15 @@ dumpComment = [ "** -*- koshu -*-"
 
 dumpClass :: ClassD -> String
 dumpClass c =
-    judge "CLASS" [ term "major"        $ pWord16  $ J.majorVersion c
-                  , term "minor"        $ pWord16  $ J.minorVersion c
+    judge "CLASS" [ term "major"        $ K.pWord16  $ J.majorVersion c
+                  , term "minor"        $ K.pWord16  $ J.minorVersion c
                   , term "super-class"  $ pClass   $ J.superClass c
-                  , term "pool-size"    $ pWord16  $ J.constsPoolSize c
+                  , term "pool-size"    $ K.pWord16  $ J.constsPoolSize c
                   , term "accessor"     $ pAccSet  $ J.accessFlags c
-                  , term "if-count"     $ pWord16  $ J.interfacesCount c
-                  , term "field-count"  $ pWord16  $ J.classFieldsCount c
-                  , term "method-count" $ pWord16  $ J.classMethodsCount c
-                  , term "attr-count"   $ pWord16  $ J.classAttributesCount c
+                  , term "if-count"     $ K.pWord16  $ J.interfacesCount c
+                  , term "field-count"  $ K.pWord16  $ J.classFieldsCount c
+                  , term "method-count" $ K.pWord16  $ J.classMethodsCount c
+                  , term "attr-count"   $ K.pWord16  $ J.classAttributesCount c
                   , term "attr"         $ pAttrSet $ J.classAttributes c ]
 
 dumpInterface :: B.ByteString -> String
@@ -83,50 +85,50 @@ dumpInterface i = judge "INTERFACE" [ term "interface" $ pClass i ]
 
 dumpPool :: (W.Word16, ConstantD) -> String
 dumpPool (i, J.CClass c) = judge "POOL-CLASS" xs where
-    xs = [ term "index"     $ pWord16 i
+    xs = [ term "index"     $ K.pWord16 i
          , term "class"     $ pClass c ]
 dumpPool (i, J.CField c (J.NameType n t)) = judge "POOL-FIELD" xs where
-    xs = [ term "index"     $ pWord16 i
+    xs = [ term "index"     $ K.pWord16 i
          , term "class"     $ pClass c
          , term "field"     $ pBytes n
          , term "type"      $ pType t ]
 dumpPool (i, J.CMethod c (J.NameType n m)) = judge "POOL-METHOD" xs where
     J.MethodSignature args ret = m
-    xs = [ term "index"     $ pWord16 i
+    xs = [ term "index"     $ K.pWord16 i
          , term "class"     $ pClass c
          , term "method"    $ pBytes n
          , term "args-type" $ pArgsType args
          , term "ret-type"  $ pRet ret ]
 dumpPool (i, J.CIfaceMethod c (J.NameType n (J.MethodSignature args ret))) = judge "POOL-IF-METHOD" xs where
-    xs = [ term "index"     $ pWord16 i
+    xs = [ term "index"     $ K.pWord16 i
          , term "class"     $ pClass c
          , term "method"    $ pBytes n
          , term "args-type" $ pArgsType args
          , term "ret-type"  $ pRet ret ]
 dumpPool (i, J.CString s) = judge "POOL-STRING" xs where
-    xs = [ term "index"     $ pWord16 i
+    xs = [ term "index"     $ K.pWord16 i
          , term "value"     $ pBytes s ]
 dumpPool (i, J.CInteger n) = judge "POOL-INTEGER" xs where
-    xs = [ term "index"     $ pWord16 i
-         , term "value"     $ pWord32 n ]
+    xs = [ term "index"     $ K.pWord16 i
+         , term "value"     $ K.pWord32 n ]
 dumpPool (i, J.CFloat _) = judge "POOL-FLOAT" xs where
-    xs = [ term "index"     $ pWord16 i
+    xs = [ term "index"     $ K.pWord16 i
          , term "value"     $ K.pText "unimplemented" ]
 dumpPool (i, J.CLong _) = judge "POOL-LONG" xs where
-    xs = [ term "index"     $ pWord16 i
+    xs = [ term "index"     $ K.pWord16 i
          , term "value"     $ K.pText "unimplemented" ]
 dumpPool (i, J.CDouble _) = judge "POOL-DOUBLE" xs where
-    xs = [ term "index"     $ pWord16 i
+    xs = [ term "index"     $ K.pWord16 i
          , term "value"     $ K.pText "unimplemented" ]
 dumpPool (i, J.CNameType n t) = judge "POOL-NAME-TYPE" xs where
-    xs = [ term "index"     $ pWord16 i
+    xs = [ term "index"     $ K.pWord16 i
          , term "name"      $ pBytes n
          , term "type"      $ pBytes t]
 dumpPool (i, J.CUTF8 s) = judge "POOL-UTF8" xs where
-    xs = [ term "index"     $ pWord16 i
+    xs = [ term "index"     $ K.pWord16 i
          , term "value"     $ pBytes s ]
 dumpPool (i, J.CUnicode s) = judge "POOL-UNICODE" xs where
-    xs = [ term "index"     $ pWord16 i
+    xs = [ term "index"     $ K.pWord16 i
          , term "value"     $ pBytes s]
 
 
@@ -138,7 +140,7 @@ dumpField f =
          [ term "accessor"   $ pAccSet  $ J.fieldAccessFlags f
          , term "field"      $ pBytes   $ J.fieldName f
          , term "type"       $ pType    $ J.fieldSignature f
-         , term "attr-count" $ pWord16  $ J.fieldAttributesCount f
+         , term "attr-count" $ K.pWord16  $ J.fieldAttributesCount f
          , term "attr"       $ pAttrSet $ J.fieldAttributes f ]
 
 
@@ -155,7 +157,7 @@ dumpMethod clsName (n, m) = gap $ concatGap [[comm], ab : meth : code] where
                     [ term "accessor"   $ pAccSet  $ J.methodAccessFlags m
                     , term "args-type"  $ pArgsType args
                     , term "ret-type"   $ pRet ret
-                    , term "attr-count" $ pWord16  $ J.methodAttributesCount m
+                    , term "attr-count" $ K.pWord16  $ J.methodAttributesCount m
                     , term "attr"       $ pAttrSet $ J.methodAttributes m ]
     code   = case J.attrByName m "Code" of
                Nothing -> ["** no code"]
@@ -163,26 +165,26 @@ dumpMethod clsName (n, m) = gap $ concatGap [[comm], ab : meth : code] where
 
 dumpCode :: J.Code -> [String]
 dumpCode c = concatGap [[code], insts, details, excs] where
-      code     = judge "CODE" [ term "stack-size"      $ pWord16 $ J.codeStackSize c
-                              , term "max-locals"      $ pWord16 $ J.codeMaxLocals c
-                              , term "length"          $ pWord32 $ J.codeLength c
-                              , term "exception-count" $ pWord16 $ J.codeExceptionsN c
-                              , term "attr-count"      $ pWord16 $ J.codeAttrsN c
+      code     = judge "CODE" [ term "stack-size"      $ K.pWord16 $ J.codeStackSize c
+                              , term "max-locals"      $ K.pWord16 $ J.codeMaxLocals c
+                              , term "length"          $ K.pWord32 $ J.codeLength c
+                              , term "exception-count" $ K.pWord16 $ J.codeExceptionsN c
+                              , term "attr-count"      $ K.pWord16 $ J.codeAttrsN c
                               , term "attr"            $ pAttrList $ J.codeAttributes c ]
       inst     = countPC $ J.codeInstructions c
       insts    = map dumpInst inst
-      details  = K.mapMaybe dumpInstDetail inst
+      details  = concatMap dumpInstDetail inst
       excs     = map dumpException $ J.codeExceptions c
 
 dumpException :: J.CodeException -> String
 dumpException (J.CodeException start end handler catch) = judge "EXCEPTION" xs where
-    xs = [ term "start"            $ pWord16 start
-         , term "end"              $ pWord16 end
-         , term "handler"          $ pWord16 handler
-         , term "catch-type-index" $ pWord16 catch ]
+    xs = [ term "start"            $ K.pWord16 start
+         , term "end"              $ K.pWord16 end
+         , term "handler"          $ K.pWord16 handler
+         , term "catch-type-index" $ K.pWord16 catch ]
 
 
-countPC :: [J.Instruction] -> [(Int, J.Instruction)]
+countPC :: [J.Instruction] -> [(J.PC, J.Instruction)]
 countPC = loop 0 where
     loop _ [] = []
     loop p (i:is) = (p, i) : loop (p + J.instSize i) is
@@ -190,11 +192,14 @@ countPC = loop 0 where
 
 -- --------------------------------------------  Instruction
 
-dumpInst :: (Int, J.Instruction) -> String
-dumpInst (n, i) = judge "INST" [ term "pc"  $ K.pDecFromInt n
-                            , term "inst" $ pShow i ]
+dumpInst :: (J.PC, J.Instruction) -> String
+dumpInst (p, i) = judge "INST" $ pc : J.instTerms i where
+    pc = term "pc" $ K.pDecFromInt p
 
-dumpInstDetail :: (Int, J.Instruction) -> Maybe String
+dumpInstDetail :: (J.PC, J.Instruction) -> [String]
+dumpInstDetail (n, J.TABLESWITCH _ _ from _ sw)  = dumpSwitch n (zip [from ..] sw)
+dumpInstDetail (n, J.LOOKUPSWITCH _ _ _ sw)      = dumpSwitch n sw
+
 dumpInstDetail (n, J.GETSTATIC i)          = dumpInstField  n i "getstatic"
 dumpInstDetail (n, J.PUTSTATIC i)          = dumpInstField  n i "putstatic"
 dumpInstDetail (n, J.GETFIELD i)           = dumpInstField  n i "getfield"
@@ -209,25 +214,32 @@ dumpInstDetail (n, J.NEW i)                = dumpInstMethod n i "new"
 dumpInstDetail (n, J.ANEWARRAY i)          = dumpInstClass  n i "anewarray"
 dumpInstDetail (n, J.CHECKCAST i)          = dumpInstClass  n i "checkcast"
 dumpInstDetail (n, J.INSTANCEOF i)         = dumpInstClass  n i "instanceof"
-dumpInstDetail _ = Nothing
+dumpInstDetail _ = []
 
-dumpInstClass :: Int -> W.Word16 -> String -> Maybe String
-dumpInstClass n i op = Just $ judge "INST-CLASS" xs where
+dumpSwitch :: J.PC -> [(W.Word32, W.Word32)] -> [String]
+dumpSwitch n switch = map j switch where
+    j (w, g) = judge "INST-SWITCH"
+                     [ term "pc"    $ K.pDecFromInt n
+                     , term "when"  $ K.pWord32 w
+                     , term "jump"  $ K.pWord32 g ]
+
+dumpInstClass :: J.PC -> W.Word16 -> String -> [String]
+dumpInstClass n i op = [judge "INST-CLASS" xs] where
     xs = [ term "pc"    $ K.pDecFromInt n
          , term "op"    $ K.pText op
-         , term "index" $ pWord16 i ]
+         , term "index" $ K.pWord16 i ]
 
-dumpInstField :: Int -> W.Word16 -> String -> Maybe String
-dumpInstField n i op = Just $ judge "INST-FIELD" xs where
+dumpInstField :: J.PC -> W.Word16 -> String -> [String]
+dumpInstField n i op = [judge "INST-FIELD" xs] where
     xs = [ term "pc"    $ K.pDecFromInt n
          , term "op"    $ K.pText op
-         , term "index" $ pWord16 i ]
+         , term "index" $ K.pWord16 i ]
 
-dumpInstMethod :: Int -> W.Word16 -> String -> Maybe String
-dumpInstMethod n i op = Just $ judge "INST-METHOD" xs where
+dumpInstMethod :: J.PC -> W.Word16 -> String -> [String]
+dumpInstMethod n i op = [judge "INST-METHOD" xs] where
     xs = [ term "pc"    $ K.pDecFromInt n
          , term "op"    $ K.pText op
-         , term "index" $ pWord16 i ]
+         , term "index" $ K.pWord16 i ]
 
 
 -- --------------------------------------------  Putter
@@ -236,7 +248,7 @@ pAccSet :: AccessFlagsD -> K.VContent
 pAccSet a = K.pSet $ K.pText `map` accessFlagsText a
 
 pAttrList :: J.Attributes J.File -> K.VContent
-pAttrList a = K.pSet $ (pWord16 . J.attributeName) `map` J.attributesList a
+pAttrList a = K.pSet $ (K.pWord16 . J.attributeName) `map` J.attributesList a
 
 pAttrSet :: AttributesD -> K.VContent
 pAttrSet a = K.pSet $ (pBytes . fst) `map` J.arlist a
@@ -251,19 +263,8 @@ pClassText s = K.pText $ map dot s where
     dot '/' = '.'
     dot x   = x
 
-pWord16 :: W.Word16 -> K.VContent
-pWord16 i = K.pDecFromInt i' where
-    i' = fromIntegral i :: Int
-
-pWord32 :: W.Word32 -> K.VContent
-pWord32 i = K.pDecFromInt i' where
-    i' = fromIntegral i :: Int
-
 pBytes :: B.ByteString -> K.VContent
 pBytes = K.pText . J.toString
-
-pShow :: (Show a) => a -> K.VContent
-pShow = K.pText . show
 
 pArgsType :: [J.FieldType] -> K.VContent
 pArgsType args = K.pList $ pType `map` args

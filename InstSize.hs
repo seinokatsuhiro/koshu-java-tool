@@ -1,10 +1,13 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module InstSize (instSize) where
+module InstSize
+  ( PC, instSize ) where
 
 import qualified JVM.Assembler as J
 
-instSize :: J.Instruction -> Int
+type PC = Int
+
+instSize :: J.Instruction -> PC
 
 instSize (J.BIPUSH _)               = 2
 instSize (J.SIPUSH _)               = 3
