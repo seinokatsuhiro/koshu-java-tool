@@ -43,7 +43,7 @@ data DiffCount =
               , diffCountBoth   :: Int
               } deriving (Show, Eq, Ord)
 
-diffCount ::  [D.Diff a] -> DiffCount
+diffCount :: [D.Diff a] -> DiffCount
 diffCount = result . foldr count (0, 0, 0) where
     count (D.Both _ _) (f, s, b) = (f, s, b + 1)
     count (D.First _)  (f, s, b) = (f + 1, s, b)
@@ -59,7 +59,7 @@ fileDiffMain old new =
     do oldc <- readFile old
        newc <- readFile new
        let d = fileDiff oldc newc
-       putJudge $ diffCountJudge old new $ diffCount d
+       K.putJudge $ bothCountJudge old new $ diffCount d
 
 fileDiff :: String -> String -> [D.Diff String]
 fileDiff old new = fileLines old `D.getDiff` fileLines new
@@ -85,11 +85,11 @@ dirDiffSub (D.Second new)    = fileNew new
 
 fileOld :: FilePath -> IO ()
 fileOld old = do del <- countLines old
-                 putJudge $ sideCountJudge (K.pText old) K.empty del 0
+                 K.putJudge $ sideCountJudge (K.pText old) K.empty del 0
 
 fileNew :: FilePath -> IO ()
 fileNew new = do add <- countLines new
-                 putJudge $ sideCountJudge K.empty (K.pText new) 0 add
+                 K.putJudge $ sideCountJudge K.empty (K.pText new) 0 add
 
 countLines :: FilePath -> IO Int
 countLines path =
@@ -110,33 +110,26 @@ getRecursiveContents dir =
                True  -> getRecursiveContents path
                False -> return [path]
 
+
 -- --------------------------------------------  Judgement
 
-diffCountJudge :: String -> String -> DiffCount -> K.JudgeC
-diffCountJudge old new d = countJudge old' new' cnt where
-    old' = K.pText old
-    new' = K.pText new
-    cnt  = ( K.pInt $ diffCountBoth d
-           , K.pInt $ diffCountFirst d
-           , K.pInt $ diffCountSecond d)
+bothCountJudge :: String -> String -> DiffCount -> K.JudgeC
+bothCountJudge old new d = diffCountJudge (K.pText old) (K.pText new) cnt where
+    cnt  = ( diffCountFirst  d
+           , diffCountSecond d
+           , diffCountBoth   d )
 
 sideCountJudge :: K.VContent -> K.VContent -> Int -> Int -> K.JudgeC
-sideCountJudge old new delete add = countJudge old new cnt where
-        cnt = (K.pInt 0, K.pInt delete, K.pInt add)
+sideCountJudge old new del add = diffCountJudge old new cnt where
+    cnt = ( del, add, 0 )
 
-countJudge :: c -> c -> (c, c, c) -> K.Judge c
-countJudge old new (unchange, delete, add) = K.affirm "DIFF-COUNT" xs where
-    xs = [ term "unchange" unchange
-         , term "delete"   delete
-         , term "add"      add
-         , term "old"      old
-         , term "new"      new ]
-
-writeJudge :: K.JudgeC -> String
-writeJudge = K.writeDownJudge K.shortEmpty
-
-putJudge :: K.JudgeC -> IO ()
-putJudge = putStrLn . writeJudge
+diffCountJudge :: (K.CDec c) => c -> c -> (Int, Int, Int) -> K.Judge c
+diffCountJudge old new (del, add, same) = K.affirm "DIFF-COUNT" xs where
+    xs = [ term "same"   $ K.pInt same
+         , term "delete" $ K.pInt del
+         , term "add"    $ K.pInt add
+         , term "old"    old
+         , term "new"    new ]
 
 term :: String -> c -> (String, c)
 term n c = (n, c)
