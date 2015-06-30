@@ -32,3 +32,17 @@ executable koshu-java-class
   -- hs-source-dirs:      
   default-language:    Haskell2010
 
+executable koshu-diff-count
+  main-is:             koshu-diff-count.hs
+  -- other-extensions:    
+  build-depends:       base                     >= 4.7 && < 4.8
+                     , bytestring               == 0.10.*
+                     , directory                == 1.*
+                     , filepath                 == 1.*
+                     , Diff                     == 0.*
+                     , koshucode-baala-base     == 0.*
+                     , koshucode-baala-core     == 0.*
+                     , koshucode-baala-content  == 0.*
+  -- hs-source-dirs:      
+  default-language:    Haskell2010
+
