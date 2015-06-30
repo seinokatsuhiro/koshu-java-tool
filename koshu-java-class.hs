@@ -318,12 +318,11 @@ concatGap :: [[String]] -> [String]
 concatGap [] = []
 concatGap (x:xs) = x ++ concatMap gap xs
 
-about :: (K.Write c) => [K.Named c] -> String
-about xs = "about " ++ xs' where
-    xs' = show $ K.writeTerms (K.write K.shortEmpty) xs
+about :: [K.Named K.VContent] -> String
+about = K.writeDownAbout K.shortEmpty . K.About
 
 judge :: String -> [(String, K.VContent)] -> String
-judge pat = K.judgeShow K.shortEmpty . K.JudgeAffirm pat
+judge pat = K.writeDownJudge K.shortEmpty . K.affirm pat
 
 term :: String -> c -> (String, c)
 term n c = (n, c)
